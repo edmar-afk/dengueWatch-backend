@@ -6,7 +6,7 @@ from django.core.validators import FileExtensionValidator
 class Residents(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=100)
-    dengue_status = models.TextField(blank=True, null=True)
+    dengue_status = models.TextField(default='Safe')
     phone_number = models.CharField(max_length=15)
     location = models.TextField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Residents
+from .models import Residents, DengueLocation
 
 
 
@@ -28,3 +28,29 @@ class ResidentsSerializer(serializers.ModelSerializer):
             "address",
             "profile_picture",
         ]
+        
+        
+class DengueLocationSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DengueLocation
+        fields = [
+            "id",
+            "status",
+            "location",
+            "description",
+            "image",
+            "image_url",
+            "posted_by",
+        ]
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+
+        if obj.image:
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+
+        return None

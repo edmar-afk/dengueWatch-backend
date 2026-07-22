@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from rest_framework import status, generics
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import ResidentsSerializer
-from .models import Residents
+from .serializers import ResidentsSerializer, DengueLocationSerializer
+from .models import Residents, DengueLocation
+from rest_framework.parsers import MultiPartParser, FormParser
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
@@ -266,3 +267,104 @@ class ResidentAccountUpdateView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+        
+        
+class ResidentLocationUpdateView(APIView):
+    permission_classes = [AllowAny]
+
+    def put(self, request, pk):
+        try:
+            resident = Residents.objects.get(pk=pk)
+        except Residents.DoesNotExist:
+            return Response(
+                {"detail": "Resident not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        location = request.data.get("location")
+
+        if location is None:
+            return Response(
+                {"detail": "Location is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        resident.location = location
+        resident.save(update_fields=["location"])
+
+        return Response(
+            {
+                "id": resident.id,
+                "location": resident.location,
+            },
+            status=status.HTTP_200_OK,
+        )
+        
+        
+class ResidentProfilePictureUpdateView(APIView):
+    permission_classes = [AllowAny]
+
+    def put(self, request, pk):
+        try:
+            resident = Residents.objects.get(pk=pk)
+        except Residents.DoesNotExist:
+            return Response(
+                {"detail": "Resident not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        profile_picture = request.FILES.get("profile_picture")
+
+        if not profile_picture:
+            return Response(
+                {"detail": "No profile picture provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Replace old profile picture
+        resident.profile_picture = profile_picture
+        resident.save()
+
+        return Response(
+            {
+                "id": resident.id,
+                "profile_picture": (
+                    request.build_absolute_uri(
+                        resident.profile_picture.url
+                    )
+                    if resident.profile_picture
+                    else None
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+        
+        
+class DengueLocationListView(generics.ListCreateAPIView):
+    queryset = DengueLocation.objects.all().order_by("-id")
+    serializer_class = DengueLocationSerializer
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    
+class DengueLocationDetailView(generics.RetrieveAPIView):
+    queryset = DengueLocation.objects.all()
+    serializer_class = DengueLocationSerializer
+    permission_classes = [AllowAny]
+    
+    
+class DengueLocationUpdateView(generics.UpdateAPIView):
+    queryset = DengueLocation.objects.all()
+    serializer_class = DengueLocationSerializer
+    permission_classes = [AllowAny]
+
+    def perform_update(self, serializer):
+        serializer.save()
+        
+class DengueLocationDeleteView(generics.DestroyAPIView):
+    queryset = DengueLocation.objects.all()
+    serializer_class = DengueLocationSerializer
+    permission_classes = [AllowAny]

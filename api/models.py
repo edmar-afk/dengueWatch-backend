@@ -20,6 +20,7 @@ class DengueLocation(models.Model):
     status = models.TextField(blank=True, null=True)
     location = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to="dengue_reports/", blank=True, null=True)
     posted_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):

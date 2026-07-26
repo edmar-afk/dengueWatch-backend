@@ -16,4 +16,11 @@ urlpatterns = [
     path("dengue-locations/<int:pk>/", views.DengueLocationDetailView.as_view(), name="dengue-location-detail"),
     path("dengue-locations/<int:pk>/update/", views.DengueLocationUpdateView.as_view(), name="dengue-location-update"),
     path("dengue-locations/<int:pk>/delete/", views.DengueLocationDeleteView.as_view(), name="dengue-location-delete"),
+    
+    
+    path("residents/<int:user_id>/", views.ResidentProfileView.as_view(), name="resident-profile",),
+    path("residents/<int:pk>/toggle-approval/", views.ToggleResidentApprovalView.as_view(), name="toggle-resident-approval",),
+    
+    
+    path("dengue-cases/", views.DengueCaseListCreateView.as_view()),
 ]

@@ -5,9 +5,10 @@ from django.contrib.auth.models import User
 from rest_framework import status, generics
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import ResidentsSerializer, DengueLocationSerializer
-from .models import Residents, DengueLocation
+from .serializers import ResidentsSerializer, DengueLocationSerializer, ResidentProfileSerializer, DengueCaseSerializer
+from .models import Residents, DengueLocation, DengueCase
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.shortcuts import get_object_or_404
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
@@ -83,10 +84,7 @@ class ResidentsListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        residents = Residents.objects.select_related("user").filter(
-            user__is_superuser=False,
-            user__is_staff=False
-        )
+        residents = Residents.objects.select_related("user")
 
         serializer = ResidentsSerializer(
             residents,
@@ -140,6 +138,9 @@ class ResidentUpdateView(APIView):
 
         user = resident.user
 
+        # Save the old status before updating
+        old_status = resident.dengue_status
+
         new_phone_number = request.data.get("phone_number")
         new_full_name = request.data.get("full_name")
 
@@ -175,6 +176,18 @@ class ResidentUpdateView(APIView):
                 user.username = new_phone_number
 
             user.save()
+
+            # Create dengue case ONLY if:
+            # 1. User is admin
+            # 2. Dengue status changed
+            if (
+                request.user.is_superuser and
+                old_status != updated_resident.dengue_status
+            ):
+                DengueCase.objects.create(
+                    resident=updated_resident,
+                    status=updated_resident.dengue_status,
+                )
 
             return Response(
                 ResidentsSerializer(updated_resident).data,
@@ -367,4 +380,37 @@ class DengueLocationUpdateView(generics.UpdateAPIView):
 class DengueLocationDeleteView(generics.DestroyAPIView):
     queryset = DengueLocation.objects.all()
     serializer_class = DengueLocationSerializer
+    permission_classes = [AllowAny]
+    
+
+
+class ResidentProfileView(generics.RetrieveAPIView):
+    serializer_class = ResidentProfileSerializer
+    lookup_field = "user_id"
+
+    def get_queryset(self):
+        return Residents.objects.select_related("user")
+    
+
+
+class ToggleResidentApprovalView(APIView):
+    def patch(self, request, pk):
+        resident = get_object_or_404(Residents, pk=pk)
+
+        user = resident.user
+        user.is_staff = not user.is_staff
+        user.save()
+
+        return Response(
+            {
+                "message": "Resident approval updated successfully.",
+                "is_staff": user.is_staff,
+            },
+            status=status.HTTP_200_OK,
+        )
+        
+        
+class DengueCaseListCreateView(generics.ListCreateAPIView):
+    queryset = DengueCase.objects.select_related("resident").order_by("-date_case")
+    serializer_class = DengueCaseSerializer
     permission_classes = [AllowAny]

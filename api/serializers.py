@@ -24,6 +24,7 @@ class ResidentsSerializer(serializers.ModelSerializer):
             "location",
             "address",
             "profile_picture",
+            "resident_idCard",   # add this
         ]
         
         

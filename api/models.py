@@ -11,7 +11,7 @@ class Residents(models.Model):
     location = models.TextField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True, validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])])
-
+    resident_idCard = models.ImageField(upload_to='resident_idcards/', blank=True, null=True, validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])])
     def __str__(self):
         return self.full_name
     

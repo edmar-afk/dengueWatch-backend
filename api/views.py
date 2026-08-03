@@ -9,6 +9,8 @@ from .serializers import ResidentsSerializer, DengueLocationSerializer, Resident
 from .models import Residents, DengueLocation, DengueCase
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
+from rest_framework.generics import DestroyAPIView
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
@@ -52,6 +54,7 @@ class RegisterView(APIView):
         username = request.data.get("username")
         first_name = request.data.get("first_name")
         password = request.data.get("password")
+        resident_idCard = request.FILES.get("resident_idCard")
 
         if User.objects.filter(username=username).exists():
             return Response(
@@ -59,18 +62,17 @@ class RegisterView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Create User
         user = User.objects.create_user(
             username=username,
             first_name=first_name,
             password=password,
         )
 
-        # Create Resident profile
         Residents.objects.create(
             user=user,
             full_name=first_name,
             phone_number=username,
+            resident_idCard=resident_idCard,
         )
 
         return Response(
@@ -201,24 +203,12 @@ class ResidentUpdateView(APIView):
 
 
 # DELETE RESIDENT
-class ResidentDeleteView(APIView):
+class ResidentDeleteView(DestroyAPIView):
+    queryset = Residents.objects.all()
     permission_classes = [AllowAny]
 
-    def delete(self, request, pk):
-        try:
-            resident = Residents.objects.get(pk=pk)
-        except Residents.DoesNotExist:
-            return Response(
-                {"detail": "Resident not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        resident.delete()
-
-        return Response(
-            {"detail": "Resident deleted successfully."},
-            status=status.HTTP_204_NO_CONTENT
-        )
+    def perform_destroy(self, instance):
+        instance.user.delete()
         
         
 

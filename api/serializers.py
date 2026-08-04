@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Residents, DengueLocation, DengueCase
+from .models import Residents, DengueLocation, DengueCase, DengueLocationImage
 
 
 
@@ -27,10 +27,43 @@ class ResidentsSerializer(serializers.ModelSerializer):
             "resident_idCard",   # add this
         ]
         
-        
+
+
+class DengueLocationImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DengueLocationImage
+        fields = [
+            "id",
+            "image",
+            "image_url",
+            "uploaded_at",
+        ]
+        read_only_fields = ["id", "image_url", "uploaded_at"]
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+
+        if obj.image:
+            url = obj.image.url
+
+            if request:
+                return request.build_absolute_uri(url)
+
+            return url
+
+        return None
+    
+     
 class DengueLocationSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     resident_image_url = serializers.SerializerMethodField()
+
+    extra_images = DengueLocationImageSerializer(
+        many=True,
+        read_only=True
+    )
 
     class Meta:
         model = DengueLocation
@@ -41,8 +74,13 @@ class DengueLocationSerializer(serializers.ModelSerializer):
             "description",
             "image",
             "image_url",
-            "resident_image_url",  # New field
+            "purok",
+            "barangay",
+            "resident_image_url",
             "posted_by",
+
+            # Added
+            "extra_images",
         ]
 
     def get_image_url(self, obj):

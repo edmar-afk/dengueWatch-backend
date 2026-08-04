@@ -23,4 +23,6 @@ urlpatterns = [
     
     
     path("dengue-cases/", views.DengueCaseListCreateView.as_view()),
+    
+     path("dengue-locations/<int:pk>/extra-images/", views.DengueLocationExtraImageCreateView.as_view(), name="dengue-location-extra-images"),
 ]

@@ -5,11 +5,13 @@ from django.contrib.auth.models import User
 from rest_framework import status, generics
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import ResidentsSerializer, DengueLocationSerializer, ResidentProfileSerializer, DengueCaseSerializer
+from .serializers import ResidentsSerializer, DengueLocationSerializer, ResidentProfileSerializer, DengueCaseSerializer, DengueLocationImageSerializer
 from .models import Residents, DengueLocation, DengueCase
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import DestroyAPIView
+from django.db.models.functions import Lower, Replace
+from django.db.models import Value
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -51,14 +53,37 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get("username")
-        first_name = request.data.get("first_name")
+        username = request.data.get("username", "").strip()
+        first_name = request.data.get("first_name", "").strip()
         password = request.data.get("password")
         resident_idCard = request.FILES.get("resident_idCard")
 
+        # Check duplicate phone number
         if User.objects.filter(username=username).exists():
             return Response(
                 {"error": "Phone Number already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Normalize name:
+        # "Juan Dela Cruz" -> "juandelacruz"
+        normalized_name = first_name.replace(" ", "").lower()
+
+        # Check duplicate name ignoring spaces and uppercase/lowercase
+        duplicate_name = (
+            User.objects
+            .annotate(
+                normalized_first_name=Lower(
+                    Replace("first_name", Value(" "), Value(""))
+                )
+            )
+            .filter(normalized_first_name=normalized_name)
+            .exists()
+        )
+
+        if duplicate_name:
+            return Response(
+                {"error": "Name already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -404,3 +429,19 @@ class DengueCaseListCreateView(generics.ListCreateAPIView):
     queryset = DengueCase.objects.select_related("resident").order_by("-date_case")
     serializer_class = DengueCaseSerializer
     permission_classes = [AllowAny]
+    
+    
+class DengueLocationExtraImageCreateView(generics.CreateAPIView):
+    serializer_class = DengueLocationImageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        dengue_location_id = self.kwargs["pk"]
+
+        dengue_location = DengueLocation.objects.get(
+            id=dengue_location_id
+        )
+
+        serializer.save(
+            dengue_location=dengue_location
+        )

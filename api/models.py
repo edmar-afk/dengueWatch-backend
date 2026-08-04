@@ -19,6 +19,8 @@ class Residents(models.Model):
 class DengueLocation(models.Model):
     status = models.TextField(blank=True, null=True)
     location = models.TextField(blank=True, null=True)
+    barangay = models.TextField(blank=True, null=True)
+    purok = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="dengue_reports/", blank=True, null=True)
     posted_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -27,8 +29,19 @@ class DengueLocation(models.Model):
     def __str__(self):
         return self.description
     
+class DengueLocationImage(models.Model):
+    dengue_location = models.ForeignKey(
+        DengueLocation,
+        on_delete=models.CASCADE,
+        related_name="extra_images"
+    )
+    image = models.ImageField(
+        upload_to="dengue_reports/extra/"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
-from django.db import models
+    def __str__(self):
+        return f"Extra image for report {self.dengue_location.id}"
 
 class DengueCase(models.Model):
     resident = models.ForeignKey(Residents,on_delete=models.CASCADE, related_name="dengue_cases")
@@ -37,3 +50,6 @@ class DengueCase(models.Model):
 
     def __str__(self):
         return f"{self.resident.full_name} - {self.status}"
+    
+    
+

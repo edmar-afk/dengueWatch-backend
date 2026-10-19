@@ -12,6 +12,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import DestroyAPIView
 from django.db.models.functions import Lower, Replace
 from django.db.models import Value
+import requests
+
+SMS_GATEWAY_API_TOKEN = "eQL9t6ipcf636FsbaM17SYvvmXPqMFvQdCzDVTZYd9190a3a"
+SMS_GATEWAY_URL = "https://smsgateway.rbsoft.org/api/v1/messages/send"
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -408,22 +412,184 @@ class ResidentProfileView(generics.RetrieveAPIView):
     
 
 
+def send_sms(phone_number, message):
+    headers = {
+        "Authorization": f"Bearer {SMS_GATEWAY_API_TOKEN}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    payload = {
+        "sims": [936],
+        "mobile_numbers": [phone_number],
+        "type": "SMS",
+        "message": message,
+        "delivery_report": True,
+    }
+
+    response = requests.post(
+        SMS_GATEWAY_URL,
+        headers=headers,
+        json=payload,
+        timeout=15,
+    )
+
+    return response
+
+
+# ============================================================
+# RESIDENT APPROVAL / REJECTION
+# ============================================================
+
+
 class ToggleResidentApprovalView(APIView):
+    permission_classes = [AllowAny]
+    
     def patch(self, request, pk):
         resident = get_object_or_404(Residents, pk=pk)
 
         user = resident.user
+
+        # Toggle approval status
         user.is_staff = not user.is_staff
         user.save()
+
+        # ====================================================
+        # USER NAME
+        # ====================================================
+
+        first_name = user.first_name.strip()
+
+        # Fallback if first_name is empty
+        if not first_name:
+            first_name = "Resident"
+
+        # ====================================================
+        # SMS MESSAGE
+        # ====================================================
+
+        if user.is_staff:
+            message = (
+                f"Hello {first_name}! 🌿\n\n"
+                "DENGUEWATCH ACCOUNT APPROVED\n\n"
+                "Good news! Your DengueWatch account has been "
+                "successfully APPROVED by the administrator.\n\n"
+                "You can now log in to your account and use "
+                "DengueWatch services, including reporting dengue "
+                "concerns and receiving important health updates.\n\n"
+                "Thank you for helping us monitor and respond to "
+                "dengue cases in the community.\n\n"
+                "Stay safe, stay alert, and help prevent dengue. "
+                "Remove stagnant water and keep your surroundings clean.\n\n"
+                "— DengueWatch Team"
+            )
+        else:
+            message = (
+                f"Hello {first_name}! 🌿\n\n"
+                "DENGUEWATCH ACCOUNT UPDATE\n\n"
+                "We regret to inform you that your DengueWatch "
+                "account registration has been REJECTED by the "
+                "administrator at this time.\n\n"
+                "Your account cannot currently be used to access "
+                "DengueWatch services or submit dengue reports.\n\n"
+                "If you believe this decision was made in error, "
+                "please contact the DengueWatch administrator for "
+                "assistance and further information regarding your "
+                "registration.\n\n"
+                "Thank you for your understanding and for supporting "
+                "our community's efforts to monitor and prevent dengue.\n\n"
+                "— DengueWatch Team"
+            )
+
+        # ====================================================
+        # SEND SMS
+        # ====================================================
+
+        try:
+            response = send_sms(
+                resident.phone_number,
+                message
+            )
+
+            sms_sent = response.ok
+
+            print("SMS STATUS:", response.status_code)
+            print("SMS RESPONSE:", response.text)
+
+        except requests.RequestException as e:
+            sms_sent = False
+            print("SMS ERROR:", e)
 
         return Response(
             {
                 "message": "Resident approval updated successfully.",
                 "is_staff": user.is_staff,
+                "sms_sent": sms_sent,
             },
             status=status.HTTP_200_OK,
         )
-        
+
+
+class SendSMSView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+
+        phone_number = request.data.get("phone_number")
+        first_name = request.data.get("first_name", "Resident")
+        approved = request.data.get("approved")
+
+        if approved:
+            message = (
+                f"Hello {first_name}! 🌿\n\n"
+                "DENGUEWATCH ACCOUNT APPROVED\n\n"
+                "Good news! Your DengueWatch account has been "
+                "successfully APPROVED by the administrator.\n\n"
+                "You can now log in and use DengueWatch services.\n\n"
+                "Stay safe and help prevent dengue by removing "
+                "stagnant water around your surroundings.\n\n"
+                "— DengueWatch Team"
+            )
+
+        else:
+            message = (
+                f"Hello {first_name}! 🌿\n\n"
+                "DENGUEWATCH ACCOUNT UPDATE\n\n"
+                "Your DengueWatch account registration has been "
+                "REJECTED by the administrator at this time.\n\n"
+                "Your account cannot currently access DengueWatch "
+                "services.\n\n"
+                "If you believe this decision was made in error, "
+                "please contact the DengueWatch administrator.\n\n"
+                "— DengueWatch Team"
+            )
+
+        try:
+
+            response = send_sms(
+                phone_number,
+                message,
+            )
+
+            print("SMS STATUS:", response.status_code)
+            print("SMS RESPONSE:", response.text)
+
+            return Response({
+                "success": response.ok,
+                "status_code": response.status_code,
+                "response": response.text,
+            })
+
+        except requests.RequestException as e:
+
+            print("SMS ERROR:", e)
+
+            return Response(
+                {
+                    "success": False,
+                    "error": str(e),
+                },
+                status=500,
+            )
         
 class DengueCaseListCreateView(generics.ListCreateAPIView):
     queryset = DengueCase.objects.select_related("resident").order_by("-date_case")

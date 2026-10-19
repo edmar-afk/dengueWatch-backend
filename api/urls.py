@@ -20,7 +20,7 @@ urlpatterns = [
     
     path("residents/<int:user_id>/", views.ResidentProfileView.as_view(), name="resident-profile",),
     path("residents/<int:pk>/toggle-approval/", views.ToggleResidentApprovalView.as_view(), name="toggle-resident-approval",),
-    
+    path("send-sms/", views.SendSMSView.as_view(), name="send-sms"),
     
     path("dengue-cases/", views.DengueCaseListCreateView.as_view()),
     

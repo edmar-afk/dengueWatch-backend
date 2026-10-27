@@ -13,6 +13,7 @@ from rest_framework.generics import DestroyAPIView
 from django.db.models.functions import Lower, Replace
 from django.db.models import Value
 import requests
+from django.db import IntegrityError
 
 SMS_GATEWAY_API_TOKEN = "eQL9t6ipcf636FsbaM17SYvvmXPqMFvQdCzDVTZYd9190a3a"
 SMS_GATEWAY_URL = "https://smsgateway.rbsoft.org/api/v1/messages/send"
@@ -610,4 +611,49 @@ class DengueLocationExtraImageCreateView(generics.CreateAPIView):
 
         serializer.save(
             dengue_location=dengue_location
+        )
+        
+        
+class RegisterBHWView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username", "").strip()
+        last_name = request.data.get("last_name", "").strip()
+        password = request.data.get("password", "")
+
+        if not username or not last_name or not password:
+            return Response(
+                {"error": "Username, last name, and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"error": "A BHW account with this username already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+           user = User.objects.create_user(
+            username=username,
+            last_name=last_name,
+            password=password,
+            is_staff=True,
+            is_superuser=True,
+        )
+        except IntegrityError:
+            return Response(
+                {"error": "Unable to create this BHW account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "message": "BHW account registered successfully!",
+                "user_id": user.id,
+                "username": user.username,
+                "last_name": user.last_name,
+            },
+            status=status.HTTP_201_CREATED,
         )

@@ -29,7 +29,11 @@ SECRET_KEY = 'django-insecure-n07q6x*4o2rh9-cj4r0bioai(@sm7zrqv0qfsp-)o_%l!$2$aa
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    "denguewatch-backend.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

@@ -15,7 +15,7 @@ from django.db.models import Value
 import requests
 from django.db import IntegrityError
 
-SMS_GATEWAY_API_TOKEN = "bXXvkYe4Ym0OvolhVg15PwcPbZYfzBGyfosYh1pR882b76eb"
+SMS_GATEWAY_API_TOKEN = "wbbeAnsIDhJqOVoE1JVULNPMASCGszjI5UdH9sw870dda32d"
 SMS_GATEWAY_URL = "https://smsgateway.rbsoft.org/api/v1/messages/send"
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -421,7 +421,7 @@ def send_sms(phone_number, message):
     }
 
     payload = {
-        "sims": [990],
+        "sims": [978],
         "mobile_numbers": [phone_number],
         "type": "SMS",
         "message": message,

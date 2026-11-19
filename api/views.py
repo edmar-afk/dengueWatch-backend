@@ -15,7 +15,7 @@ from django.db.models import Value
 import requests
 from django.db import IntegrityError
 
-SMS_GATEWAY_API_TOKEN = "eQL9t6ipcf636FsbaM17SYvvmXPqMFvQdCzDVTZYd9190a3a"
+SMS_GATEWAY_API_TOKEN = "wbbeAnsIDhJqOVoE1JVULNPMASCGszjI5UdH9sw870dda32d"
 SMS_GATEWAY_URL = "https://smsgateway.rbsoft.org/api/v1/messages/send"
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -421,7 +421,7 @@ def send_sms(phone_number, message):
     }
 
     payload = {
-        "sims": [936],
+        "sims": [978],
         "mobile_numbers": [phone_number],
         "type": "SMS",
         "message": message,
@@ -614,20 +614,26 @@ class DengueLocationExtraImageCreateView(generics.CreateAPIView):
         )
         
         
+
 class RegisterBHWView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         username = request.data.get("username", "").strip()
+        first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         password = request.data.get("password", "")
 
-        if not username or not last_name or not password:
+        # Validate required fields
+        if not username or not first_name or not last_name or not password:
             return Response(
-                {"error": "Username, last name, and password are required."},
+                {
+                    "error": "Username, barangay, purok, and password are required."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check duplicate username
         if User.objects.filter(username=username).exists():
             return Response(
                 {"error": "A BHW account with this username already exists."},
@@ -635,13 +641,15 @@ class RegisterBHWView(APIView):
             )
 
         try:
-           user = User.objects.create_user(
-            username=username,
-            last_name=last_name,
-            password=password,
-            is_staff=True,
-            is_superuser=True,
-        )
+            user = User.objects.create_user(
+                username=username,
+                first_name=first_name,  # Barangay
+                last_name=last_name,    # Purok
+                password=password,
+                is_staff=True,
+                is_superuser=True,
+            )
+
         except IntegrityError:
             return Response(
                 {"error": "Unable to create this BHW account."},
@@ -653,7 +661,9 @@ class RegisterBHWView(APIView):
                 "message": "BHW account registered successfully!",
                 "user_id": user.id,
                 "username": user.username,
+                "first_name": user.first_name,
                 "last_name": user.last_name,
             },
             status=status.HTTP_201_CREATED,
         )
+
